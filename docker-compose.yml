@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_server
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx_html:/usr/share/nginx/html
+    networks:
+      - app_network
+
+  apache:
+    image: httpd:alpine
+    container_name: apache_server
+    ports:
+      - "8081:80"
+    volumes:
+      - ./apache_html:/usr/local/apache2/htdocs/
+    networks:
+      - app_network
+
+  django:
+    image: python:3.9
+    container_name: django_app
+    command: >
+      sh -c "pip install django && django-admin startproject mysite && cd mysite && python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./django_app:/mysite
+    working_dir: /mysite
+    networks:
+      - app_network
+
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins_server
+    ports:
+      - "8084:8080"  # Jenkins UI port
+      - "50000:50000"  # Agent communication
+    volumes:
+      - jenkins_home:/var/jenkins_home # Persistent storage for Jenkins data
+      - /var/run/docker.sock:/var/run/docker.sock # Access Docker socket
+    networks:
+      - app_network
+    restart: always
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  jenkins_home:

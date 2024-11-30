@@ -1,0 +1,96 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml'
+        PROJECT_DIR = "${WORKSPACE}" // Default Jenkins workspace
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Checking out code from the repository...'
+                git url: 'https://github.com/your-repo.git', branch: 'main'
+            }
+        }
+
+        stage('Build Services') {
+            parallel {
+                stage('Build NGINX') {
+                    steps {
+                        echo 'Building NGINX service...'
+                        sh """
+                            docker-compose -f ${DOCKER_COMPOSE_FILE} build nginx
+                        """
+                    }
+                }
+                stage('Build Apache') {
+                    steps {
+                        echo 'Building Apache service...'
+                        sh """
+                            docker-compose -f ${DOCKER_COMPOSE_FILE} build apache
+                        """
+                    }
+                }
+                stage('Build Django') {
+                    steps {
+                        echo 'Building Django service...'
+                        sh """
+                            docker-compose -f ${DOCKER_COMPOSE_FILE} build django
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Staging') {
+            steps {
+                echo 'Deploying services to staging...'
+                sh """
+                    docker-compose -f ${DOCKER_COMPOSE_FILE} up -d
+                """
+            }
+        }
+
+        stage('Test Staging Services') {
+            steps {
+                echo 'Running tests for staging services...'
+
+                // Example tests for services
+                echo 'Testing NGINX...'
+                sh 'curl -I http://localhost:8080 || exit 1'
+
+                echo 'Testing Apache...'
+                sh 'curl -I http://localhost:8081 || exit 1'
+
+                echo 'Testing Django...'
+                sh 'curl -I http://localhost:8000 || exit 1'
+            }
+        }
+
+        stage('Promote to Production') {
+            steps {
+                input message: 'Approve deployment to production?'
+                echo 'Deploying services to production...'
+
+                // Example deployment to production by recreating containers
+                sh """
+                    docker-compose -f ${DOCKER_COMPOSE_FILE} down
+                    docker-compose -f ${DOCKER_COMPOSE_FILE} up -d --force-recreate
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline execution completed.'
+        }
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed.'
+        }
+    }
+}
