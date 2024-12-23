@@ -1,0 +1,59 @@
+version: '3.8'
+ 
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_server_production
+    ports:
+      - "80:80"  # Expose on the standard HTTP port
+    volumes:
+      - D:/jenkinstask/nginx_html:/usr/share/nginx/html  # Persistent volume for production
+    networks:
+      - app_network
+    restart: always  # Ensure the service restarts in case of failure
+ 
+  apache:
+    image: httpd:alpine
+    container_name: apache_server_production
+    ports:
+      - "81:80"  # Expose on a different port to avoid conflict
+    volumes:
+      - D:/jenkinstask/apache_html:/usr/local/apache2/htdocs/  # Persistent volume for production
+    networks:
+      - app_network
+    restart: always  # Ensure the service restarts in case of failure
+ 
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile.django
+    container_name: django_app_production
+    ports:
+      - "8000:8000"
+    volumes:
+      - D:/jenkinstask/django_app:/mysite  # Persistent volume for production
+    working_dir: /mysite
+    networks:
+      - app_network
+    restart: always  # Ensure the service restarts in case of failure
+ 
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins_server_production
+    user: root
+    ports:
+      - "8090:8080"  # Jenkins UI port
+      - "50000:50000"  # Agent communication
+    volumes:
+      - D:/jenkinstask/jenkins_home:/var/jenkins_home  # Persistent storage for Jenkins data
+      - //var/run/docker.sock:/var/run/docker.sock  # Access Docker socket
+    networks:
+      - app_network
+    restart: always  # Ensure the service restarts in case of failure
+ 
+networks:
+  app_network:
+    driver: bridge
+ 
+volumes:
+  jenkins_home:
